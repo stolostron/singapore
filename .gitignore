@@ -1,9 +1,5 @@
 # Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+kcp-ocm
 
 # Test binary, built with `go test -c`
 *.test
@@ -13,3 +9,16 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Demo temporary output
+contrib/syncer-registration-demo/kcp
+contrib/syncer-registration-demo/.kcp
+kcp-started
+*.kubeconfig
+*.log
+rootca.*
+*.tokens
+
+# Allow cmd and vendor directory 
+!vendor/**
+!cmd/**

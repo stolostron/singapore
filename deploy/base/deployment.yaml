@@ -1,0 +1,32 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kcp-ocm-integration-controller
+  labels:
+    app: kcp-ocm-integration-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kcp-ocm-integration-controller
+  template:
+    metadata:
+      labels:
+        app: kcp-ocm-integration-controller
+    spec:
+      serviceAccountName: kcp-ocm-integration-controller-sa
+      containers:
+      - name: kcp-ocm-integration-controller
+        image: quay.io/skeeey/kcp-ocm-integration-controller:kcp-release-0.4
+        args:
+          - "/kcp-ocm"
+          - "manager"
+          - "--disable-leader-election"
+          - "--kcp-kubeconfig=/var/kcp-ocm/kcp/admin.kubeconfig"
+        volumeMounts:
+        - name: kcp-admin-kubeconfig
+          mountPath: "/var/kcp-ocm/kcp"
+      volumes:
+      - name: kcp-admin-kubeconfig
+        secret:
+          secretName: kcp-admin-kubeconfig

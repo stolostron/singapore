@@ -1,0 +1,25 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kcp-ocm-integration-controller
+  labels:
+    app: kcp-ocm-integration-controller
+spec:
+  template:
+    spec:
+      containers:
+      - name: kcp-ocm-integration-controller
+        args:
+          - "/kcp-ocm"
+          - "manager"
+          - "--disable-leader-election"
+          - "--kcp-kubeconfig=/var/kcp-ocm/kcp/admin.kubeconfig"
+          - "--kcp-ca=/var/kcp-ocm/ca/rootca.crt"
+          - "--kcp-key=/var/kcp-ocm/ca/rootca.key"
+        volumeMounts:
+        - name: kcp-client-ca
+          mountPath: "/var/kcp-ocm/ca"
+      volumes:
+      - name: kcp-client-ca
+        secret:
+          secretName: kcp-client-ca
