@@ -14,11 +14,11 @@ include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
 # Image URL to use all building/pushing image targets;
 IMAGE ?= kcp-ocm-integration-controller
 IMAGE_TAG?=kcp-release-0.4
-IMAGE_REGISTRY ?= quay.io/skeeey
+IMAGE_REGISTRY ?= quay.io/stolostron
 IMAGE_NAME?=$(IMAGE_REGISTRY)/$(IMAGE):$(IMAGE_TAG)
 KUBECTL?=kubectl
 
-GIT_HOST ?= github.com/qiujian16/kcp-ocm
+GIT_HOST ?= github.com/stolostron/singapore
 BASE_DIR := $(shell basename $(PWD))
 DEST := $(GOPATH)/src/$(GIT_HOST)/$(BASE_DIR)
 
