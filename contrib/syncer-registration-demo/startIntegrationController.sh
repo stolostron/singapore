@@ -7,6 +7,7 @@ ROOT_DIR="$( cd ${CURRENT_DIR}/../.. && pwd)"
 BUILD_BINARY=${BUILD_BINARY:-"true"}
 IN_CLUSTER=${IN_CLUSTER:-"false"}
 ENABLE_CLIENT_CA=${ENABLE_CLIENT_CA:-"false"}
+LISTEN=${LISTEN:-"0.0.0.0:8443"}
 
 source "${DEMO_DIR}"/utils
 
@@ -55,7 +56,7 @@ if [ -z "$KCP_KUBECONFIG" ]; then
 
 fi
 
-CTRL_ARGS="--disable-leader-election --namespace=default --kcp-kubeconfig=${KCP_KUBECONFIG} --kubeconfig=${HUB_KUBECONFIG}"
+CTRL_ARGS="--disable-leader-election --namespace=default --kcp-kubeconfig=${KCP_KUBECONFIG} --kubeconfig=${HUB_KUBECONFIG} --listen=${LISTEN}"
 
 if [ "$ENABLE_CLIENT_CA" = "true" ]; then
     if [ -z "$CLIENT_CA_FILE" ]; then

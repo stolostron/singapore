@@ -4,7 +4,7 @@
 
 2. Setup demo enviroment
     - run `./startKCPServer.sh` to start a KCP server
-    - run `./startIntegrationController.sh` to start the kcp-ocm integration controller in aother terminal
+    - run `./startIntegrationController.sh` to start the kcp-ocm integration controller in another terminal. You may need to `export LISTEN=0.0.0.0:8449` e.g. if your port 8443 is already in use
 
 3. Run the demo script `./demo-script.sh` in aother terminal
 
