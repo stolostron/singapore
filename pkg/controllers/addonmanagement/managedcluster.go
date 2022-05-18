@@ -35,7 +35,10 @@ import (
 // managedclusteraddon with the name of "kcp-sycner-<workspace name>" will be created
 // in the cluster namespace.
 
-const clusterSetLabel = "cluster.open-cluster-management.io/clusterset"
+const (
+	clusterSetLabel  = "cluster.open-cluster-management.io/clusterset"
+	selfManagedLabel = "local-cluster"
+)
 
 var clusterGVR = schema.GroupVersionResource{
 	Group:    "workload.kcp.dev",
@@ -123,6 +126,11 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 		return nil
 	case err != nil:
 		return err
+	}
+
+	if selfManaged, ok := cluster.Labels[selfManagedLabel]; ok && strings.EqualFold(selfManaged, "true") {
+		// ignore the local-cluster
+		return nil
 	}
 
 	clusterSetName, existed := cluster.Labels[clusterSetLabel]
