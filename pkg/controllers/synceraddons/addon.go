@@ -377,5 +377,5 @@ func (s *syncerAddon) getAddOnSAToken() (string, error) {
 		return string(token), nil
 	}
 
-	return "", fmt.Errorf("failed to get the token of worksapce sa %s in namespace kcp-ocm", workspaceSAName)
+	return "", fmt.Errorf("failed to get the token of worksapce sa %s in namespace default", workspaceSAName)
 }
