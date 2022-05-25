@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/stolostron/singapore/pkg/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -372,35 +373,39 @@ func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceH
 		return err
 	}
 
-	workloadCluster := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "workload.kcp.dev/v1alpha1",
-			"kind":       "WorkloadCluster",
-			"metadata": map[string]interface{}{
-				"name":   clusterName,
-				"labels": labels,
-			},
-			"spec": map[string]interface{}{
-				"kubeconfig": "",
-			},
-		},
-	}
-
 	if wc == nil {
+		workloadCluster := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "workload.kcp.dev/v1alpha1",
+				"kind":       "WorkloadCluster",
+				"metadata": map[string]interface{}{
+					"name":   clusterName,
+					"labels": labels,
+				},
+				"spec": map[string]interface{}{
+					"kubeconfig": "",
+				},
+			},
+		}
 		if _, err := dynamicClient.Resource(clusterGVR).Create(ctx, workloadCluster, metav1.CreateOptions{}); err != nil {
 			return err
 		}
 
 		c.eventRecorder.Eventf("KCPWorkloadClusterCreated", "The KCP workload cluster %s is created in workspace %s", clusterName, workspaceConfig.Host)
 	} else {
-		// TODO - Does this need to be a PATCH? (Probably.) Are we going to be in conflict with updates being made on the object by KCP? Assume
-		// we control the spec and KCP controls the status.
-		workloadCluster.SetResourceVersion(wc.GetResourceVersion())
-		if _, err := dynamicClient.Resource(clusterGVR).Update(ctx, workloadCluster, metav1.UpdateOptions{}); err != nil {
-			return err
-		}
+		wc = wc.DeepCopy()
 
-		c.eventRecorder.Eventf("KCPWorkloadClusterUpdated", "The KCP workload cluster %s is updated in workspace %s", clusterName, workspaceConfig.Host)
+		workloadClusterLabels := wc.GetLabels()
+		modified := resourcemerge.BoolPtr(false)
+		resourcemerge.MergeMap(modified, &workloadClusterLabels, labels)
+
+		if *modified {
+			wc.SetLabels(workloadClusterLabels)
+			if _, err := dynamicClient.Resource(clusterGVR).Update(ctx, wc, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
+			c.eventRecorder.Eventf("KCPWorkloadClusterUpdated", "The KCP workload cluster %s is updated in workspace %s", clusterName, workspaceConfig.Host)
+		}
 	}
 	return nil
 }
