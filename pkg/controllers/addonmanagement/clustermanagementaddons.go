@@ -72,7 +72,7 @@ func NewClusterManagementAddonController(
 
 func (c *clusterManagementAddonController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	cmaddonName := syncCtx.QueueKey()
-	klog.V(4).Infof("Reconcil clustermanagementaddon %s", cmaddonName)
+	klog.V(4).Infof("Reconcile clustermanagementaddon %s", cmaddonName)
 
 	cmaddon, err := c.clusterManagementAddonLister.Get(cmaddonName)
 	switch {

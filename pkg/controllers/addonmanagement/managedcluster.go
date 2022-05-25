@@ -3,6 +3,7 @@ package addonmanagement
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/openshift/library-go/pkg/controller/factory"
@@ -28,6 +29,7 @@ import (
 	clusterinformerv1beta1 "open-cluster-management.io/api/client/cluster/informers/externalversions/cluster/v1beta1"
 	clusterlister "open-cluster-management.io/api/client/cluster/listers/cluster/v1"
 	clusterlisterv1beta1 "open-cluster-management.io/api/client/cluster/listers/cluster/v1beta1"
+	v1 "open-cluster-management.io/api/cluster/v1"
 )
 
 // The controller has the control loop on managedcluster. If a managedcluster is in
@@ -39,6 +41,11 @@ const (
 	clusterSetLabel  = "cluster.open-cluster-management.io/clusterset"
 	selfManagedLabel = "local-cluster"
 )
+
+// List of regexes to exclude from labels and cluster claims copied to workload cluster labels
+var excludeLabelREs = []string{
+	"^feature\\.open-cluster-management\\.io\\/addon",
+}
 
 var clusterGVR = schema.GroupVersionResource{
 	Group:    "workload.kcp.dev",
@@ -118,13 +125,15 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 	}
 
 	clusterName := key
-	klog.V(4).Infof("Reconcil cluster %s", clusterName)
+	klog.V(4).Infof("Reconciling cluster %s", clusterName)
 
 	cluster, err := c.managedClusterLister.Get(clusterName)
 	switch {
 	case errors.IsNotFound(err):
+		klog.V(4).Infof("cluster not found %s", clusterName)
 		return nil
 	case err != nil:
+		klog.Errorf("error getting cluster %s: %s", clusterName, err)
 		return err
 	}
 
@@ -135,6 +144,7 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 
 	clusterSetName, existed := cluster.Labels[clusterSetLabel]
 	if !existed {
+		klog.V(4).Infof("cluster set label not found. removing addons from %s", clusterName)
 		// try to clean all kcp syncer addons
 		return c.removeAddons(ctx, clusterName, "")
 	}
@@ -142,18 +152,21 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 	clusterSet, err := c.managedClusterSetLister.Get(clusterSetName)
 	switch {
 	case errors.IsNotFound(err):
+		klog.V(4).Infof("clusterset not found %s", clusterSetName)
 		// try to clean all kcp syncer addons
 		return c.removeAddons(ctx, clusterName, "")
 	case err != nil:
+		klog.Errorf("error getting maangedclusterset %s: %s", clusterSetName, err)
 		return err
 	}
 
 	// get the workspace identifier from the managedclusterset workspace
 	// annotation, the format of the annotation value will be <org>:<workspace>
 	workspaceId := helpers.GetWorkspaceIdFromObject(clusterSet)
-
+	klog.V(4).Infof("clusterset %s has workspace id %s", clusterSetName, workspaceId)
 	// remove addons if they are not needed
 	if err := c.removeAddons(ctx, clusterName, workspaceId); err != nil {
+		klog.Errorf("error removing addons from %s: %s", err)
 		return err
 	}
 
@@ -164,8 +177,10 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 	// get the host endpoint of the workspace
 	workspaceHost, err := c.getWorkspaceHost(ctx, workspaceId)
 	if err != nil {
+		klog.Errorf("error getting workspace host for %s, %s", workspaceId, err)
 		return err
 	}
+	klog.V(4).Infof("got workspace host: %s", workspaceHost)
 
 	// if ca is not enabled, create a service account for kcp-syncer in the workspace
 	if !c.caEnabled {
@@ -174,13 +189,22 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 		}
 	}
 
+	klog.V(4).Infof("applied the service account: %s", workspaceHost)
+
+	// gather labels for workloadcluster
+	labels := c.getWorkloadClusterLabels(*cluster, excludeLabelREs)
+
+	klog.V(4).Infof("workloadcluster labels %s", labels)
+
 	// create a workloadcluster in the workspace to correspond to this managed cluster
-	if err := c.applyWorkloadCluster(ctx, workspaceHost, clusterName); err != nil {
+	if err := c.applyWorkloadCluster(ctx, workspaceHost, clusterName, labels); err != nil {
+		klog.Errorf("error applying workload cluster: %s", err)
 		return err
 	}
 
 	// apply a clustermanagementaddon to start a addon manager
 	if err := c.applyClusterManagementAddOn(ctx, workspaceId); err != nil {
+		klog.Errorf("error applying cluster management addon: %s", err)
 		return err
 	}
 
@@ -211,6 +235,35 @@ func (c *clusterController) removeAddons(ctx context.Context, clusterName, works
 	}
 
 	return nil
+}
+
+// Return all of the ManagedCluster labels and cluster claims that should be exposed as labels on the WorkloadCluster
+func (c *clusterController) getWorkloadClusterLabels(cluster v1.ManagedCluster, excludeLabelRegExps []string) map[string]string {
+	labels := make(map[string]string)
+
+	for k, v := range cluster.Labels {
+		labels[k] = v
+	}
+
+	for _, clusterClaim := range cluster.Status.ClusterClaims {
+		labels[clusterClaim.Name] = clusterClaim.Value
+	}
+
+	for _, excludeLabelRegex := range excludeLabelRegExps {
+		for k := range labels {
+			r, e := regexp.MatchString(excludeLabelRegex, k)
+			if e != nil {
+				klog.Errorf("Error evaluating regex %s: %s", excludeLabelRegex, e)
+				continue
+			}
+
+			if r {
+				klog.V(4).Infoln("excluding label", k)
+				delete(labels, k)
+			}
+		}
+	}
+	return labels
 }
 
 func (c *clusterController) getWorkspaceHost(ctx context.Context, workspaceId string) (string, error) {
@@ -303,7 +356,7 @@ func (c *clusterController) applyServiceAccount(ctx context.Context, workspaceId
 
 }
 
-func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceHost, clusterName string) error {
+func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceHost, clusterName string, labels map[string]string) error {
 	workspaceConfig := rest.CopyConfig(c.kcpRootClusterConfig)
 	workspaceConfig.Host = workspaceHost
 
@@ -312,12 +365,10 @@ func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceH
 		return err
 	}
 
-	_, err = dynamicClient.Resource(clusterGVR).Get(ctx, clusterName, metav1.GetOptions{})
-	if err == nil {
-		return nil
-	}
+	wc, err := dynamicClient.Resource(clusterGVR).Get(ctx, clusterName, metav1.GetOptions{})
 
-	if !errors.IsNotFound(err) {
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("error retrieving workload cluster: %s", err)
 		return err
 	}
 
@@ -326,18 +377,31 @@ func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceH
 			"apiVersion": "workload.kcp.dev/v1alpha1",
 			"kind":       "WorkloadCluster",
 			"metadata": map[string]interface{}{
-				"name": clusterName,
+				"name":   clusterName,
+				"labels": labels,
 			},
 			"spec": map[string]interface{}{
 				"kubeconfig": "",
 			},
 		},
 	}
-	if _, err := dynamicClient.Resource(clusterGVR).Create(ctx, workloadCluster, metav1.CreateOptions{}); err != nil {
-		return err
-	}
 
-	c.eventRecorder.Eventf("KCPWorkloadClusterCreated", "The KCP workload cluster %s is created in workspace %s", clusterName, workspaceConfig.Host)
+	if wc == nil {
+		if _, err := dynamicClient.Resource(clusterGVR).Create(ctx, workloadCluster, metav1.CreateOptions{}); err != nil {
+			return err
+		}
+
+		c.eventRecorder.Eventf("KCPWorkloadClusterCreated", "The KCP workload cluster %s is created in workspace %s", clusterName, workspaceConfig.Host)
+	} else {
+		// TODO - Does this need to be a PATCH? (Probably.) Are we going to be in conflict with updates being made on the object by KCP? Assume
+		// we control the spec and KCP controls the status.
+		workloadCluster.SetResourceVersion(wc.GetResourceVersion())
+		if _, err := dynamicClient.Resource(clusterGVR).Update(ctx, workloadCluster, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+
+		c.eventRecorder.Eventf("KCPWorkloadClusterUpdated", "The KCP workload cluster %s is updated in workspace %s", clusterName, workspaceConfig.Host)
+	}
 	return nil
 }
 
