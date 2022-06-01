@@ -204,11 +204,15 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 		return err
 	}
 
+	klog.V(4).Infof("applied workload cluster: %s", clusterName)
+
 	// apply a clustermanagementaddon to start a addon manager
 	if err := c.applyClusterManagementAddOn(ctx, workspaceId); err != nil {
 		klog.Errorf("error applying cluster management addon: %s", err)
 		return err
 	}
+
+	klog.V(4).Infof("applied cluster management addon: %s", clusterName)
 
 	// apply a managedclusteraddon for this managed cluster
 	return c.applyAddon(ctx, clusterName, workspaceId)
@@ -275,6 +279,14 @@ func (c *clusterController) getWorkloadClusterLabels(cluster v1.ManagedCluster, 
 
 func (c *clusterController) getWorkspaceHost(ctx context.Context, workspaceId string) (string, error) {
 	parentWorkspaceConfig := rest.CopyConfig(c.kcpRootClusterConfig)
+	absolute, err := helpers.IsAbsoluteWorkspace(parentWorkspaceConfig.Host, workspaceId)
+	if err != nil {
+		return "", err
+	}
+	if absolute {
+		return helpers.GetAbsoluteWorkspaceURL(parentWorkspaceConfig.Host, workspaceId)
+	}
+
 	parentWorkspaceConfig.Host = c.kcpRootClusterConfig.Host + helpers.GetParentWorkspaceId(workspaceId)
 
 	dynamicClient, err := dynamic.NewForConfig(parentWorkspaceConfig)
@@ -287,11 +299,6 @@ func (c *clusterController) getWorkspaceHost(ctx context.Context, workspaceId st
 	workspace, err := dynamicClient.Resource(helpers.ClusterWorkspaceGVR).Get(ctx, workspaceName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
-	}
-
-	workspaceType := helpers.GetWorkspaceType(workspace)
-	if workspaceType != "Universal" {
-		return "", fmt.Errorf("the workspace %s type (%s) is not Univeral", workspaceId, workspaceType)
 	}
 
 	if helpers.GetWorkspacePhase(workspace) != "Ready" {

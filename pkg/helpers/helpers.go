@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -103,4 +104,37 @@ func GetWorkspaceName(workspaceId string) string {
 	}
 
 	return workspaceId
+}
+
+// This implementation assumes the absolute workspace is the kcp config current
+// context or a child of it. Another option would just be to check for "root:" prefix.
+// This is a temporary for hack for kcp dev workload support.
+func IsAbsoluteWorkspace(host string, workspace string) (bool, error) {
+	kcpContext, err := GetKCPContext(host)
+	if err != nil {
+		return false, err
+	}
+	if strings.HasPrefix(workspace, kcpContext) {
+		return true, nil
+	}
+	return false, nil
+}
+
+func GetKCPContext(host string) (string, error) {
+	contextIndex := strings.LastIndex(host, "/")
+	if contextIndex != -1 {
+		context := host[contextIndex+1:]
+		return context, nil
+	} else {
+		return "", errors.New("unexpected host format")
+	}
+}
+
+func GetAbsoluteWorkspaceURL(host string, absoluteWorkspace string) (string, error) {
+	contextIndex := strings.LastIndex(host, "/")
+	if contextIndex == -1 {
+		return "", errors.New("unexpected host format")
+	}
+	baseURL := host[:contextIndex]
+	return baseURL + "/" + absoluteWorkspace, nil
 }
