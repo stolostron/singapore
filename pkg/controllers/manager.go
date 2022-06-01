@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stolostron/singapore/pkg/controllers/addonmanagement"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	addonclient "open-cluster-management.io/api/client/addon/clientset/versioned"
@@ -41,6 +42,8 @@ func (o *ManagerOptions) Run(ctx context.Context, controllerContext *controllerc
 	if err != nil {
 		return err
 	}
+
+	klog.V(4).Infof("KCP root cluster config host: %s", kcpRootClusterConfig.Host)
 
 	clusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
