@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -247,7 +248,12 @@ func (c *clusterController) getWorkloadClusterLabels(cluster v1.ManagedCluster, 
 	}
 
 	for _, clusterClaim := range cluster.Status.ClusterClaims {
-		labels[clusterClaim.Name] = clusterClaim.Value
+		if errs := validation.IsValidLabelValue(clusterClaim.Value); len(errs) != 0 {
+			klog.V(4).Infoln("excluding cluster claim", clusterClaim.Value)
+		} else {
+			labels[clusterClaim.Name] = clusterClaim.Value
+		}
+
 	}
 
 	for _, excludeLabelRegex := range excludeLabelRegExps {
