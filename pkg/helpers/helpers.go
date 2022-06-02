@@ -3,16 +3,19 @@ package helpers
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const workspaceAnnotation = "kcp-workspace"
+const defaultWorkspaceAnnotation = "kcp-workspace"
+const defaultSyncerPrefix = "kcp-syncer-"
 
 var ClusterWorkspaceGVR = schema.GroupVersionResource{
 	Group:    "tenancy.kcp.dev",
@@ -75,7 +78,31 @@ func GetWorkspaceURL(workspace runtime.Object) string {
 }
 
 func GetAddonName(workspaceId string) string {
-	return fmt.Sprintf("kcp-syncer-%s", strings.ReplaceAll(workspaceId, ":", "-"))
+	return fmt.Sprintf("%s%s", GetSyncerPrefix(), strings.ReplaceAll(workspaceId, ":", "-"))
+}
+
+func getKCPInstance() string {
+	return os.Getenv("KCP_INSTANCE")
+}
+
+func GetWorkspaceAnnotationName() string {
+	kcp := getKCPInstance()
+	wsAnnotation := defaultWorkspaceAnnotation
+	if len(kcp) > 0 {
+		wsAnnotation = fmt.Sprintf("%s-%s", kcp, wsAnnotation)
+	}
+	klog.V(4).Infof("Using workspace annotation %s", wsAnnotation)
+	return wsAnnotation
+}
+
+func GetSyncerPrefix() string {
+	kcp := getKCPInstance()
+	prefix := defaultSyncerPrefix
+	if len(kcp) > 0 {
+		prefix = fmt.Sprintf("%s-%s", kcp, prefix)
+	}
+	klog.V(4).Infof("Using syncer prefix %s", prefix)
+	return prefix
 }
 
 func GetWorkspaceIdFromObject(obj interface{}) string {
@@ -84,7 +111,8 @@ func GetWorkspaceIdFromObject(obj interface{}) string {
 		return ""
 	}
 
-	return accessor.GetAnnotations()[workspaceAnnotation]
+	wsAnnotation := GetWorkspaceAnnotationName()
+	return accessor.GetAnnotations()[wsAnnotation]
 }
 
 func GetParentWorkspaceId(workspaceId string) string {

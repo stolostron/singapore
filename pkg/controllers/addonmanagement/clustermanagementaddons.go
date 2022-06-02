@@ -65,7 +65,7 @@ func NewClusterManagementAddonController(
 		},
 		func(obj interface{}) bool {
 			accessor, _ := meta.Accessor(obj)
-			return strings.HasPrefix(accessor.GetName(), "kcp-syncer-")
+			return strings.HasPrefix(accessor.GetName(), helpers.GetSyncerPrefix())
 		},
 		clusterManagementAddonInformer.Informer()).
 		WithSync(c.sync).ToController("syncer-addon-controller", recorder)
@@ -159,7 +159,8 @@ func (c *clusterManagementAddonController) removeFinalizer(ctx context.Context, 
 }
 
 func (c *clusterManagementAddonController) getWorkspaceConfig(ctx context.Context, cmaddon *addonapiv1alpha1.ClusterManagementAddOn) *rest.Config {
-	workspaceId, ok := cmaddon.Annotations["kcp-workspace"]
+	a := helpers.GetWorkspaceAnnotationName()
+	workspaceId, ok := cmaddon.Annotations[a]
 	if !ok {
 		return nil
 	}

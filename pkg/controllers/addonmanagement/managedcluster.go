@@ -94,7 +94,7 @@ func NewClusterController(
 			},
 			func(obj interface{}) bool {
 				accessor, _ := meta.Accessor(obj)
-				return strings.HasPrefix(accessor.GetName(), "kcp-syncer-")
+				return strings.HasPrefix(accessor.GetName(), helpers.GetSyncerPrefix())
 			},
 			addonInformers.Informer(),
 		).
@@ -226,7 +226,7 @@ func (c *clusterController) removeAddons(ctx context.Context, clusterName, works
 	}
 
 	for _, addon := range addons {
-		if !strings.HasPrefix(addon.Name, "kcp-syncer-") {
+		if !strings.HasPrefix(addon.Name, helpers.GetSyncerPrefix()) {
 			continue
 		}
 
@@ -312,11 +312,12 @@ func (c *clusterController) applyClusterManagementAddOn(ctx context.Context, wor
 	clusterManagementAddOnName := helpers.GetAddonName(workspaceId)
 	_, err := c.addonClient.AddonV1alpha1().ClusterManagementAddOns().Get(ctx, clusterManagementAddOnName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
+		a := helpers.GetWorkspaceAnnotationName()
 		clusterManagementAddOn := &addonapiv1alpha1.ClusterManagementAddOn{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: clusterManagementAddOnName,
 				Annotations: map[string]string{
-					"kcp-workspace": workspaceId,
+					a: workspaceId,
 				},
 			},
 			Spec: addonapiv1alpha1.ClusterManagementAddOnSpec{

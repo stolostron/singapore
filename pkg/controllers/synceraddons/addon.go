@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -198,6 +199,14 @@ func (s *syncerAddon) signer(csr *certificatesv1.CertificateSigningRequest) []by
 	return data
 }
 
+func getSyncerImage() string {
+	syncerImage := os.Getenv("KCP_SYNCER_IMAGE")
+	if len(syncerImage) > 0 {
+		return syncerImage
+	}
+	return defaultSyncerImage
+}
+
 func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) (runtime.Object, error) {
 	manifestConfig := struct {
 		AddonName           string
@@ -212,7 +221,7 @@ func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.Manag
 		Cluster:             cluster.Name,
 		LogicalCluster:      s.kcpLogicalCluster,
 		LogicalClusterLabel: strings.ReplaceAll(s.kcpLogicalCluster, ":", "_"),
-		Image:               defaultSyncerImage,
+		Image:               getSyncerImage(),
 		Namespace:           addon.Spec.InstallNamespace,
 		CertsEnabled:        s.certsEnabled,
 	}
