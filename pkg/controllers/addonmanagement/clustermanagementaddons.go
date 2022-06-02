@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/stolostron/singapore/pkg/controllers/synceraddons"
+	"github.com/stolostron/singapore/pkg/helpers"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,6 +165,22 @@ func (c *clusterManagementAddonController) getWorkspaceConfig(ctx context.Contex
 	}
 
 	workspaceConfig := rest.CopyConfig(c.kcpRootRestConfig)
-	workspaceConfig.Host = fmt.Sprintf("%s:%s", workspaceConfig.Host, workspaceId)
+
+	absolute, err := helpers.IsAbsoluteWorkspace(c.kcpRootRestConfig.Host, workspaceId)
+	if err != nil {
+		klog.Errorf("error checking if absolute workspace %s: %s", workspaceId, err)
+		return nil
+	}
+	if absolute {
+		workspaceUrl, err := helpers.GetAbsoluteWorkspaceURL(c.kcpRootRestConfig.Host, workspaceId)
+		if err != nil {
+			klog.Errorf("error getting absolute workspace url %s: %s", workspaceId, err)
+			return nil
+		}
+		workspaceConfig.Host = workspaceUrl
+	} else {
+		workspaceConfig.Host = fmt.Sprintf("%s:%s", workspaceConfig.Host, workspaceId)
+	}
+
 	return workspaceConfig
 }

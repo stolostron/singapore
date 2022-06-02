@@ -58,7 +58,7 @@ var (
 	genericCodecs = serializer.NewCodecFactory(genericScheme)
 	genericCodec  = genericCodecs.UniversalDeserializer()
 
-	permisionFiles = []string{
+	permissionFiles = []string{
 		"manifests/kcp_clusterrolebinding.yaml",
 	}
 
@@ -260,7 +260,7 @@ func (s *syncerAddon) bindClusterRole(clusterName, addonName string, recorder ev
 			}
 			return assets.MustCreateAssetFromTemplate(name, file, config).Data, nil
 		},
-		permisionFiles...,
+		permissionFiles...,
 	)
 
 	for _, result := range results {
