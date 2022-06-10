@@ -42,17 +42,28 @@ cd ../..
 
 7. Export environment variables for your hub and kcp kubeconfigs
 ```bash
-export HUB_KUBECONFIG=~/.kube/config 
+export HUB_KUBECONFIG=~/.kube/config
 export KCP_KUBECONFIG=/path/to/your/kcp.kubeconfig
 ```
 
-8. Run make deploy to create the deployment on your hub cluster
+8. Run `make deploy` to create the deployment on your hub cluster
 ```bash
 make deploy
 ```
 
 9. Test the integration by annotating a ManagedClusterSet. If the controller is working correctly, you should then see a WorkloadCluster created in your KCP workspace and a syncer deployed on the managed clusters in your managed cluster set.
 ```bash
-kubectl annotate managedclusterset your_clusterset_name "kcp-workspace=root:org_name:ws_name" 
+kubectl annotate managedclusterset your_clusterset_name "kcp-workspace=root:org_name:ws_name"
 ```
 
+## Removing from a hub cluster
+
+1. Remove the annotation from the managedclusterset
+```bash
+kubectl annotate managedclusterset your_clusterset_name kcp-workspace-
+```
+
+2. Run `make undeploy` to remove the deployment on your hub cluster
+```bash
+make undeploy
+```
