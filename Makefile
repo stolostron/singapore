@@ -46,3 +46,8 @@ deploy-with-client-ca:
 	$(KUBECTL) -n open-cluster-management delete secret kcp-client-ca --ignore-not-found --kubeconfig $(HUB_KUBECONFIG)
 	$(KUBECTL) -n open-cluster-management create secret generic kcp-client-ca --from-file=rootca.crt=${CLIENT_CA_FILE} --from-file=rootca.key=${CLIENT_CA_KEY_FILE} --kubeconfig $(HUB_KUBECONFIG)
 	$(KUBECTL) apply -k deploy/client-ca --kubeconfig $(HUB_KUBECONFIG)
+	.PHONY: deploy
+
+undeploy:
+	$(KUBECTL) -n open-cluster-management delete secret kcp-admin-kubeconfig --ignore-not-found --kubeconfig $(HUB_KUBECONFIG)
+	$(KUBECTL) delete -k deploy/base --kubeconfig $(HUB_KUBECONFIG)
