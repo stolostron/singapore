@@ -23,6 +23,9 @@ spec:
           - "manager"
           - "--disable-leader-election"
           - "--kcp-kubeconfig=/var/kcp-ocm/kcp/admin.kubeconfig"
+        env:
+        - name: KCP_SYNCER_CRONJOB_SCHEDULE
+          value: "*/15 * * * *"   
         volumeMounts:
         - name: kcp-admin-kubeconfig
           mountPath: "/var/kcp-ocm/kcp"

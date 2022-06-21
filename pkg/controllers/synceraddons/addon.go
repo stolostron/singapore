@@ -37,6 +37,9 @@ import (
 
 const defaultSyncerImage = "quay.io/skeeey/kcp-syncer:release-0.4"
 
+// Syncer Cron job default is to run once a year at midnight of 1 January
+const defaultSyncerCronJobSchedule = "0 0 1 1 *"
+
 // An addon-framework implementation to deploy syncer and register the syncer to a workspace on kcp
 // It also needs to setup the rbac in the workspace for the syncer.
 
@@ -68,6 +71,7 @@ var (
 		"manifests/namespace.yaml",
 		"manifests/deployment.yaml",
 		"manifests/service_account.yaml",
+		"manifests/cronjob.yaml",
 	}
 
 	clusterGVR = schema.GroupVersionResource{
@@ -207,6 +211,14 @@ func getSyncerImage() string {
 	return defaultSyncerImage
 }
 
+func getSyncerCronJobSchedule() string {
+	syncerCronJobSchedule := os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE")
+	if len(syncerCronJobSchedule) > 0 {
+		return syncerCronJobSchedule
+	}
+	return defaultSyncerCronJobSchedule
+}
+
 func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) (runtime.Object, error) {
 	manifestConfig := struct {
 		AddonName           string
@@ -216,6 +228,7 @@ func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.Manag
 		Image               string
 		Namespace           string
 		CertsEnabled        bool
+		CronJobSchedule     string
 	}{
 		AddonName:           s.addonName,
 		Cluster:             cluster.Name,
@@ -224,6 +237,7 @@ func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.Manag
 		Image:               getSyncerImage(),
 		Namespace:           addon.Spec.InstallNamespace,
 		CertsEnabled:        s.certsEnabled,
+		CronJobSchedule:     getSyncerCronJobSchedule(),
 	}
 
 	template, err := manifestFiles.ReadFile(file)
