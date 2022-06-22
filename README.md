@@ -72,7 +72,7 @@ Environment variables:
 
 - KCP_SYNCER_CRONJOB_SCHEDULE
 
-  Specify the frequency, using cron schedule syntax, that the syncer deployment will perform a rolling restart.  This will allow the syncer to pick up the latest image whne a floating tag is used. The default is `"0 0 1 1 *"` (Every year on January 1)  
+  Specify the frequency, using cron schedule syntax, that the syncer deployment will perform a rolling restart.  By default, this CronJob is disabled if the environment variable is not defined.  This will allow the syncer to pick up the latest image when a floating tag is used. Typically only needed when using development/unstable branches.  Example value, every day at 02:00  `"0 2 * * *"`   
 
 
 ## Removing from a hub cluster

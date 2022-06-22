@@ -71,8 +71,10 @@ var (
 		"manifests/namespace.yaml",
 		"manifests/deployment.yaml",
 		"manifests/service_account.yaml",
-		"manifests/cronjob.yaml",
 	}
+
+	//OPTIONAL - file only used if os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE") is set
+	cronDeployFile string = "manifests/cronjob.yaml"
 
 	clusterGVR = schema.GroupVersionResource{
 		Group:    "workload.kcp.dev",
@@ -113,7 +115,18 @@ func NewSyncerAddon(addonName string, ca, key []byte, kcpWorkspaceRestConfig *re
 
 func (s *syncerAddon) Manifests(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) ([]runtime.Object, error) {
 	objects := []runtime.Object{}
-	for _, file := range deployFiles {
+
+	// figure out all the deployment files we will need to use
+	totalDeployFiles := []string{}
+	totalDeployFiles = append(totalDeployFiles, deployFiles...)
+
+	//Only use the Cron job file if a value for env var KCP_SYNCER_CRONJOB_SCHEDULE was passed in
+	syncerCronJobSchedule := os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE")
+	if len(syncerCronJobSchedule) > 0 {
+		totalDeployFiles = append(totalDeployFiles, cronDeployFile)
+	}
+
+	for _, file := range totalDeployFiles {
 		object, err := s.loadManifestFromFile(file, cluster, addon)
 		if err != nil {
 			return nil, err
