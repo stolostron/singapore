@@ -56,6 +56,25 @@ make deploy
 kubectl annotate managedclusterset your_clusterset_name "kcp-workspace=root:org_name:ws_name"
 ```
 
+## Customizing KCP Syncer
+
+There are several environment variables that can be used in deploy/base/deployment.yaml for the `kcp-ocm-integration-controller` container.  To see the current environment variables in use:
+
+```
+oc get deployment kcp-ocm-integration-controller -n open-cluster-management  -o jsonpath='{.spec.template.spec.containers[0].env[*]}'
+```
+
+Environment variables:
+
+- KCP_SYNCER_IMAGE
+
+  Specify the docker image to use for the kcp syncer.  The default is `"quay.io/skeeey/kcp-syncer:release-0.4"`
+
+- KCP_SYNCER_CRONJOB_SCHEDULE
+
+  Specify the frequency, using cron schedule syntax, that the syncer deployment will perform a rolling restart.  By default, this CronJob is disabled if the environment variable is not defined.  This will allow the syncer to pick up the latest image when a floating tag is used. Typically only needed when using development/unstable branches.  Example value, every day at 02:00  `"0 2 * * *"`   
+
+
 ## Removing from a hub cluster
 
 1. Remove the annotation from the managedclusterset

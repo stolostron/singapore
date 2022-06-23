@@ -37,6 +37,9 @@ import (
 
 const defaultSyncerImage = "quay.io/skeeey/kcp-syncer:release-0.4"
 
+// Syncer Cron job default is to run once a year at midnight of 1 January
+const defaultSyncerCronJobSchedule = "0 0 1 1 *"
+
 // An addon-framework implementation to deploy syncer and register the syncer to a workspace on kcp
 // It also needs to setup the rbac in the workspace for the syncer.
 
@@ -69,6 +72,9 @@ var (
 		"manifests/deployment.yaml",
 		"manifests/service_account.yaml",
 	}
+
+	//OPTIONAL - file only used if os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE") is set
+	cronDeployFile string = "manifests/cronjob.yaml"
 
 	clusterGVR = schema.GroupVersionResource{
 		Group:    "workload.kcp.dev",
@@ -109,7 +115,18 @@ func NewSyncerAddon(addonName string, ca, key []byte, kcpWorkspaceRestConfig *re
 
 func (s *syncerAddon) Manifests(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) ([]runtime.Object, error) {
 	objects := []runtime.Object{}
-	for _, file := range deployFiles {
+
+	// figure out all the deployment files we will need to use
+	totalDeployFiles := []string{}
+	totalDeployFiles = append(totalDeployFiles, deployFiles...)
+
+	//Only use the Cron job file if a value for env var KCP_SYNCER_CRONJOB_SCHEDULE was passed in
+	syncerCronJobSchedule := os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE")
+	if len(syncerCronJobSchedule) > 0 {
+		totalDeployFiles = append(totalDeployFiles, cronDeployFile)
+	}
+
+	for _, file := range totalDeployFiles {
 		object, err := s.loadManifestFromFile(file, cluster, addon)
 		if err != nil {
 			return nil, err
@@ -207,6 +224,14 @@ func getSyncerImage() string {
 	return defaultSyncerImage
 }
 
+func getSyncerCronJobSchedule() string {
+	syncerCronJobSchedule := os.Getenv("KCP_SYNCER_CRONJOB_SCHEDULE")
+	if len(syncerCronJobSchedule) > 0 {
+		return syncerCronJobSchedule
+	}
+	return defaultSyncerCronJobSchedule
+}
+
 func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) (runtime.Object, error) {
 	manifestConfig := struct {
 		AddonName           string
@@ -216,6 +241,7 @@ func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.Manag
 		Image               string
 		Namespace           string
 		CertsEnabled        bool
+		CronJobSchedule     string
 	}{
 		AddonName:           s.addonName,
 		Cluster:             cluster.Name,
@@ -224,6 +250,7 @@ func (s *syncerAddon) loadManifestFromFile(file string, cluster *clusterv1.Manag
 		Image:               getSyncerImage(),
 		Namespace:           addon.Spec.InstallNamespace,
 		CertsEnabled:        s.certsEnabled,
+		CronJobSchedule:     getSyncerCronJobSchedule(),
 	}
 
 	template, err := manifestFiles.ReadFile(file)

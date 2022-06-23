@@ -19,6 +19,7 @@ spec:
       containers:
       - name: kcp-syncer
         image: {{ .Image }}
+        imagePullPolicy: Always
         args:
           - "/syncer"
           - "--workload-cluster-name={{ .Cluster }}"

@@ -1,0 +1,20 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: kcp-syncer-cron
+  namespace: {{ .Namespace }}
+spec:
+  schedule: "{{ .CronJobSchedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kcp-syncer
+          containers:
+          - name: cron
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - kubectl rollout restart deployment kcp-syncer -n {{ .Namespace }}
+          restartPolicy: OnFailure
