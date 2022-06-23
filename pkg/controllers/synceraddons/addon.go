@@ -59,7 +59,9 @@ var (
 	genericCodecs = serializer.NewCodecFactory(genericScheme)
 	genericCodec  = genericCodecs.UniversalDeserializer()
 
+	// Created on kcp for the syncer service account
 	permissionFiles = []string{
+		"manifests/kcp_clusterrole.yaml",
 		"manifests/kcp_clusterrolebinding.yaml",
 	}
 
