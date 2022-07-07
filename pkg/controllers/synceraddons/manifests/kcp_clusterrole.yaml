@@ -4,15 +4,15 @@ metadata:
   name: {{ .AddonName }}-{{ .Cluster }}
 rules:
 - apiGroups: ["workload.kcp.dev"]
-  resources: ["workloadclusters"]
+  resources: ["synctargets"]
   resourceNames: [{{ .Cluster }}]
   verbs: ["sync"]
 - apiGroups: ["workload.kcp.dev"]
-  resources: ["workloadclusters/status"]
+  resources: ["synctargets/status"]
   resourceNames: [{{ .Cluster }}]
   verbs: ["update", "patch"]
 - apiGroups: ["workload.kcp.dev"]
-  resources: ["workloadclusters"]
+  resources: ["synctargets"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["apiresource.kcp.dev"]
   resources: ["apiresourceimports"]

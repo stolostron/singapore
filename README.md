@@ -51,7 +51,7 @@ export KCP_KUBECONFIG=/path/to/your/kcp.kubeconfig
 make deploy
 ```
 
-9. Test the integration by annotating a ManagedClusterSet. If the controller is working correctly, you should then see a WorkloadCluster created in your KCP workspace and a syncer deployed on the managed clusters in your managed cluster set.
+9. Test the integration by annotating a ManagedClusterSet. If the controller is working correctly, you should then see a SyncTarget created in your KCP workspace and a syncer deployed on the managed clusters in your managed cluster set.
 ```bash
 kubectl annotate managedclusterset your_clusterset_name "kcp-workspace=root:org_name:ws_name"
 ```
