@@ -27,9 +27,9 @@ comment "Link the clusterset dev to the kcp location workspace"
 pe "kubectl annotate managedclusterset dev \"kcp-workspace=acm:location\" --overwrite --kubeconfig kubeconfig/hub.kubeconfig"
 
 export KUBECONFIG=${DEMO_DIR}/.kcp/demo.kubeconfig
-comment "After the clusterset was annotated, the workload clusters will be created to the location workspace to correspond to the managed clusters"
+comment "After the clusterset was annotated, the sync targets will be created to the location workspace to correspond to the managed clusters"
 pe "kubectl kcp workspace use location"
-pe "kubectl get workloadclusters"
+pe "kubectl get synctargets"
 unset KUBECONFIG
 
 comment "and the kcp-syncer will be deployed to all managed clusters in the clusterset dev"

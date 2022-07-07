@@ -35,7 +35,7 @@ import (
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
-const defaultSyncerImage = "quay.io/skeeey/kcp-syncer:release-0.4"
+const defaultSyncerImage = "ghcr.io/kcp-dev/kcp/syncer:main"
 
 // Syncer Cron job default is to run once a year at midnight of 1 January
 const defaultSyncerCronJobSchedule = "0 0 1 1 *"
@@ -81,7 +81,7 @@ var (
 	clusterGVR = schema.GroupVersionResource{
 		Group:    "workload.kcp.dev",
 		Version:  "v1alpha1",
-		Resource: "workloadclusters",
+		Resource: "synctargets",
 	}
 )
 

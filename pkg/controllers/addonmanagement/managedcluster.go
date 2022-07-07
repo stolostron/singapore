@@ -44,7 +44,7 @@ const (
 	selfManagedLabel = "local-cluster"
 )
 
-// List of regexes to exclude from labels and cluster claims copied to workload cluster labels
+// List of regexes to exclude from labels and cluster claims copied to sync target labels
 var excludeLabelREs = []string{
 	"^feature\\.open-cluster-management\\.io\\/addon",
 }
@@ -52,7 +52,7 @@ var excludeLabelREs = []string{
 var clusterGVR = schema.GroupVersionResource{
 	Group:    "workload.kcp.dev",
 	Version:  "v1alpha1",
-	Resource: "workloadclusters",
+	Resource: "synctargets",
 }
 
 type clusterController struct {
@@ -193,18 +193,18 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 
 	klog.V(4).Infof("applied the service account: %s", workspaceHost)
 
-	// gather labels for workloadcluster
-	labels := c.getWorkloadClusterLabels(*cluster, excludeLabelREs)
+	// gather labels for synctarget
+	labels := c.getSyncTargetLabels(*cluster, excludeLabelREs)
 
-	klog.V(4).Infof("workloadcluster labels %s", labels)
+	klog.V(4).Infof("synctarget labels %s", labels)
 
-	// create a workloadcluster in the workspace to correspond to this managed cluster
-	if err := c.applyWorkloadCluster(ctx, workspaceHost, clusterName, labels); err != nil {
-		klog.Errorf("error applying workload cluster: %s", err)
+	// create a synctarget in the workspace to correspond to this managed cluster
+	if err := c.applySyncTarget(ctx, workspaceHost, clusterName, labels); err != nil {
+		klog.Errorf("error applying sync target: %s", err)
 		return err
 	}
 
-	klog.V(4).Infof("applied workload cluster: %s", clusterName)
+	klog.V(4).Infof("applied sync target: %s", clusterName)
 
 	// apply a clustermanagementaddon to start a addon manager
 	if err := c.applyClusterManagementAddOn(ctx, workspaceId); err != nil {
@@ -218,7 +218,7 @@ func (c *clusterController) sync(ctx context.Context, syncCtx factory.SyncContex
 	return c.applyAddon(ctx, clusterName, workspaceId)
 }
 
-// TODO remove the workloadclusters from the workspace
+// TODO remove the synctargets from the workspace
 func (c *clusterController) removeAddons(ctx context.Context, clusterName, workspaceId string) error {
 	addons, err := c.managedClusterAddonLister.ManagedClusterAddOns(clusterName).List(labels.Everything())
 	if err != nil {
@@ -243,8 +243,8 @@ func (c *clusterController) removeAddons(ctx context.Context, clusterName, works
 	return nil
 }
 
-// Return all of the ManagedCluster labels and cluster claims that should be exposed as labels on the WorkloadCluster
-func (c *clusterController) getWorkloadClusterLabels(cluster v1.ManagedCluster, excludeLabelRegExps []string) map[string]string {
+// Return all of the ManagedCluster labels and cluster claims that should be exposed as labels on the SyncTarget
+func (c *clusterController) getSyncTargetLabels(cluster v1.ManagedCluster, excludeLabelRegExps []string) map[string]string {
 	labels := make(map[string]string)
 
 	for k, v := range cluster.Labels {
@@ -371,7 +371,7 @@ func (c *clusterController) applyServiceAccount(ctx context.Context, workspaceId
 
 }
 
-func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceHost, clusterName string, labels map[string]string) error {
+func (c *clusterController) applySyncTarget(ctx context.Context, workspaceHost, clusterName string, labels map[string]string) error {
 	workspaceConfig := rest.CopyConfig(c.kcpRootClusterConfig)
 	workspaceConfig.Host = workspaceHost
 
@@ -388,10 +388,10 @@ func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceH
 	}
 
 	if wc == nil {
-		workloadCluster := &unstructured.Unstructured{
+		syncTarget := &unstructured.Unstructured{
 			Object: map[string]interface{}{
 				"apiVersion": "workload.kcp.dev/v1alpha1",
-				"kind":       "WorkloadCluster",
+				"kind":       "SyncTarget",
 				"metadata": map[string]interface{}{
 					"name":   clusterName,
 					"labels": labels,
@@ -401,24 +401,24 @@ func (c *clusterController) applyWorkloadCluster(ctx context.Context, workspaceH
 				},
 			},
 		}
-		if _, err := dynamicClient.Resource(clusterGVR).Create(ctx, workloadCluster, metav1.CreateOptions{}); err != nil {
+		if _, err := dynamicClient.Resource(clusterGVR).Create(ctx, syncTarget, metav1.CreateOptions{}); err != nil {
 			return err
 		}
 
-		c.eventRecorder.Eventf("KCPWorkloadClusterCreated", "The KCP workload cluster %s is created in workspace %s", clusterName, workspaceConfig.Host)
+		c.eventRecorder.Eventf("KCPSyncTargetCreated", "The KCP sync target %s is created in workspace %s", clusterName, workspaceConfig.Host)
 	} else {
 		wc = wc.DeepCopy()
 
-		workloadClusterLabels := wc.GetLabels()
+		syncTargetLabels := wc.GetLabels()
 		modified := resourcemerge.BoolPtr(false)
-		resourcemerge.MergeMap(modified, &workloadClusterLabels, labels)
+		resourcemerge.MergeMap(modified, &syncTargetLabels, labels)
 
 		if *modified {
-			wc.SetLabels(workloadClusterLabels)
+			wc.SetLabels(syncTargetLabels)
 			if _, err := dynamicClient.Resource(clusterGVR).Update(ctx, wc, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
-			c.eventRecorder.Eventf("KCPWorkloadClusterUpdated", "The KCP workload cluster %s is updated in workspace %s", clusterName, workspaceConfig.Host)
+			c.eventRecorder.Eventf("KCPSyncTargetUpdated", "The KCP sync target %s is updated in workspace %s", clusterName, workspaceConfig.Host)
 		}
 	}
 	return nil

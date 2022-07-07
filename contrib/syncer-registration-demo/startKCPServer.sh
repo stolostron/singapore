@@ -18,7 +18,7 @@ rm -rf ${DEMO_DIR}/.kcp
 if [ "$BUILD_BINARY" = "true" ]; then
     echo "Building kcp ..."
     rm -rf kcp
-    git clone --branch release-0.4 --depth 1 https://github.com/kcp-dev/kcp.git
+    git clone --branch main --depth 1 https://github.com/kcp-dev/kcp.git
     pushd $KCP_DIR
     make build
     if [ ! -f "bin/kcp" ]; then

@@ -22,7 +22,7 @@ spec:
         imagePullPolicy: Always
         args:
           - "/syncer"
-          - "--workload-cluster-name={{ .Cluster }}"
+          - "--sync-target-name={{ .Cluster }}"
           - "--from_cluster={{ .LogicalCluster }}"
           - "--from_kubeconfig=/kcp-syncer-config/kubeconfig"
           - "--resources=configmaps"

@@ -4,4 +4,4 @@ metadata:
   name: {{ .Namespace }}
   labels:
     workload.kcp.io/logical-cluster: {{ .LogicalClusterLabel }}
-    workload.kcp.io/workload-cluster: {{ .Cluster }}
+    workload.kcp.io/sync-target: {{ .Cluster }}
